@@ -1,0 +1,20 @@
+﻿#sizefinder-inputs, sizefinder-inputs div {display:block;}
+.vlb-vertical div {}
+.vlb-horizontal div {float:left;}
+
+.vlbselect {width:80px; margin-right:5px;}
+.vlbCatalogBtn, .vlbQuoteBtn {text-decoration:underline; cursor:pointer;}
+.vlbQuoteBtn {margin-left:20px;}
+
+.ModPostalCodeLookupC, .ModDynamicFormsC, .ModICGLocalFocalModulesWheelConfiguratorC, .ModNetDrivenModulesVehicleLookupBarC, .ModLanguagesC {
+  position: relative;
+} 
+
+.ApplicationLookupBar #find-tire-bar{ background: transparent;}
+.ApplicationLookupBar select, .ApplicationLookupBar .ctcSearchButtons{ float: left;}
+.ApplicationLookupBar .ctcSearchButtons{ margin: 2px 5px;}
+
+
+.vlbTabs .retail-tab, .vlbTabs .commercial-tab{list-style-type:none; margin-right:5px; padding:5px; float:left; cursor:pointer; font-weight:700;}
+.vlbTabs .active {cursor:default;}
+.vlbTabContentWrapper {clear:both;}

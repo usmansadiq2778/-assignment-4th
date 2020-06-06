@@ -1,0 +1,30 @@
+///google event tracking for phone, maps, and email
+$(function () {
+    $("a[href^='tel']").bind('click', function (event) {
+        if (typeof ga !== "undefined") {
+            event.preventDefault();
+            ga('send', 'event', "Mobile", "Click", "Telephone", 75);
+            var v = $(this);
+            setTimeout(function () { window.location = v.attr("href").replace('http://','//'); }, 1000);
+        }
+    });
+
+    /* a.mobile-loc-link */
+    $("a[href*='maps.google.com']").bind('click', function (event) {
+        if (typeof ga !== "undefined") {
+            event.preventDefault();
+            ga('send', 'event', "Mobile", "Click", "Directions", 75);
+            var v = $(this);
+            setTimeout(function () { window.location = v.attr("href").replace('http://','//'); }, 1000);
+        }
+    });
+
+    $("a[href^='mailto']").bind('click', function (event) {
+        if (typeof ga !== "undefined") {
+            event.preventDefault();
+            ga('send', 'event', "Mobile", "Click", "Email", 75);
+            var v = $(this);
+            setTimeout(function () { window.location = v.attr("href").replace('http://','//'); }, 1000);
+        }
+    });
+}); 

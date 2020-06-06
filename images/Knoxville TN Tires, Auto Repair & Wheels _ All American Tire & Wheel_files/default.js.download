@@ -1,0 +1,505 @@
+/*
+ * This function stops DNN from hijacking the enter button
+ * Conditions have been added for each instance where the enter button should perform an action
+ * There is also a class that has been added to allow the enter button press to escape this function
+ *    (This is for use in multi-line text fields - ex:Service Manager description fields)
+*/
+var vehicleInfo;
+
+$(function () {
+    $("form").bind("keypress", function (e) {
+        /*if enter is pressed*/
+        if (e.keyCode == 13) {
+            //ALLOWS ENTER BUTTON TO BE USED - TEXT FIELDS
+            if (document.activeElement.className.indexOf('allow-return') != -1 || $(document.activeElement).is('textarea.padding')){
+                document.activeElement.value += "\n";
+                return false;
+            }
+                //SEARCH BAR
+            else if (document.activeElement.id == 'dnn_dnnSEARCH_txtSearch') {
+                $('#dnn_dnnSEARCH_cmdSearch').trigger('click');
+                return false;
+            }
+                //POSTAL CODE LOOKUP
+            else if (document.activeElement.className.indexOf('postalcode-entrybox') != -1) {
+                $('.postalcode-link')[0].click();
+                return false;
+            }
+                //LOCATIONS MODULE - GY DETAILS
+            else if (document.activeElement.id == 'dirSearch') {
+                //$('.loc-go')[0].click();
+                return false;
+            }
+                //LOCATIONS MODULE - MAP LIST VIEW
+            else if ($(document.activeElement).parents('#maplegendwrapper').length == 1) {
+                mapSearch();
+                return false;
+            }
+                //LOCATIONS MODULE - LIST VIEW
+            else if (document.activeElement.id.indexOf('ViewLocations_ListDisplay_txtZipSearch') != -1) {
+                window.location = document.activeElement.parentNode.children[4].href;
+                return false;
+            }
+                //LOCATIONS MODULE - MAP VIEW
+            else if ($(document.activeElement).parents('#MapSearchWrapperDiv').length == 1) {
+                if ($('.locRefineSearch')[0].title.length > 0) {
+                    $('.locRefineSearch')[0].focus();
+                    return false;
+                }
+            }
+                //LOCATIONS MODULE - MAP VIEW
+            else if ($(document.activeElement).parents('.ICG_Modules_LocalFocal_LocationsContent').length == 1) {
+                if ($('.locRefineSearch')[0].title.length > 0) {
+                    jsGo_Click();
+                    window.location = $('.locRefineSearch')[0].href;
+                    return false;
+                }
+            }
+                //DYNAMIC FORMS
+            else if (isDescendantOfClass("ModDynamicFormsC", document.activeElement)) {
+                $(document.activeElement).closest('.DynamicForms_SaveFormDiv > span > a')[0].click();
+                return false;
+            }
+                //ADVANCED QUOTING
+            else if ($('#advquote #' + document.activeElement.id)[0] != null && $('#advquote #' + document.activeElement.id)[0].id.length > 0) {
+                window.location = $('#advquote .req-adv-quote')[0].href;
+                return false;
+            }
+                //NB STORE
+            else if (document.activeElement.className.indexOf('CartPromoCode') != -1) {
+                window.location = $('.CartPromoCodeButton')[0].href;
+                return false;
+            }
+            else if (document.activeElement.id.indexOf('_txtPostalCode') != -1 && document.activeElement.parentElement.id.indexOf('_pnlEnterPostalCode') != -1) {
+                var a = $('.NBright_ClientButton')[0];
+                if (a.id.indexOf('_cmdEnterPostalCode') != -1) {
+                    window.location = a.href;
+                    return false;
+                }
+            }
+            else if (document.activeElement.className.indexOf('adviserOdometerTextbox') != -1) {
+                validateAdviserVlb();
+                return false;
+            }
+            else if (document.activeElement.className.indexOf('adviserResultOdometerTextbox') != -1) {
+                setOdometerAndRedirect();
+                return false;
+            }
+            else if (isDescendant(document.getElementById("sideFilterrefineyoursearch"), document.activeElement)) {
+                refineSearch();
+                return false;
+            }
+            else if (isDescendant(document.getElementById("atcrefineyoursearch"), document.activeElement)) {
+                refineSearch();
+                return false;
+            }
+            //ADD MORE CONDITIONS HERE
+
+        }
+    });
+});
+
+
+/*
+ * This function ensures that lead management is the full width of the site to avoid cutting off the buttons
+*/
+$(window).on('load', function (e) {
+    var currentUrl = document.location.href.toLowerCase();
+    if (currentUrl.search("/terms.aspx") > -1 || currentUrl.endsWith("/terms")
+     || currentUrl.search("/privacy.aspx") > -1 || currentUrl.endsWith("/privacy")
+     || currentUrl.search("lead-management.aspx") > -1 || currentUrl.endsWith("/lead-management")
+     || currentUrl.search("admin/languages") > -1
+     || currentUrl.search("/ctl/") > -1
+	 || (typeof (FullWidthContent) !== 'undefined' && FullWidthContent !== null && FullWidthContent)) {
+        SetContentFullWidth();
+    }
+});
+
+function SetContentFullWidth() {
+    $('#HomePane').css("display", "none");
+    $('#dnn_SidePane').css("display", "none");
+    $('#bgbottom').css("display", "none");
+
+    var content = document.getElementById('dnn_ContentPane');
+    content.style.width = "96%";
+    content.style.margin = "0";
+    content.style.padding = "20px 2%";
+    content.style.borderRadius = "10px";
+    content.style.background = "#fff";
+    content.style.color = "#000";
+}
+
+
+/*
+ * This function is the same as jQuery.getScript except it allows the browser to cache the response
+*/
+function getScriptCached(url, callback) {
+    callback = (typeof callback != 'undefined') ? callback : {};
+
+    $.ajax({
+        type: "GET",
+        url: url,
+        success: callback,
+        dataType: "script",
+        cache: true
+    });
+}
+
+
+/*
+ * This function allows for the searching of query string parameters
+*/
+function getQSparam(key) {
+    var params = window.location.search.substring(1).split('&');
+    var length = key.toString().length;
+
+    for (var i = 0; i < params.length; i++) {
+        if (params[i].substring(0, length) + "=" == key + "=")
+            return params[i].substring(length + 1);
+    }
+
+    var pathParts = window.location.pathname.substring(1).split('/');
+    for (var i = 0; i < pathParts.length - 1; i++) {
+        if (pathParts[i] == key)
+            return pathParts[i + 1];
+    }
+
+    return null;
+}
+
+
+/*
+ * This function allows for the deletion of query string parameters (key & value)
+*/
+function deleteQSparams(keys, path, qs) {
+    if (typeof path === "undefined") {
+        path = window.location.pathname;
+    }
+    if (typeof qs === "undefined") {
+        qs = window.location.search;
+    }
+
+    var params = qs.substring(1).split('&').filter(function (p) { return p != "" });
+    params = params.filter(function (p) { return !keys.includes(p.split("=")[0]) });
+
+    var pathParts = path.substring(1).split('/');
+    var newPath = [];
+    if (pathParts.length > 1) {
+        for (var i = 0; i < pathParts.length - 1; i++) {
+            if (keys.includes(pathParts[i])) {
+                i++; //skip the value
+            } else {
+                newPath.push(pathParts[i]);
+                if (i == pathParts.length - 2) {
+                    newPath.push(pathParts[i + 1]);
+                }
+            }
+        }
+    } else {
+        newPath = pathParts; //no key value pairs
+    }
+
+    return "/" + newPath.join("/") + (params.length > 0 ? "?" + params.join("&") : "");
+}
+
+
+
+/*
+ * Functions to get/set/delete Cookies
+*/
+function setNDcookie(c_name, value, exdays, extraParams) {
+    if (typeof exdays === "undefined") {
+        exdays = 365;
+    }
+    if (typeof extraParams === "undefined") {
+        extraParams = '';
+    }
+    var exdate = new Date();
+    exdate.setDate(exdate.getDate() + exdays);
+    var c_value = escape(value) + ((exdays == null) ? '' : '; expires=' + exdate.toUTCString()) + "; path=/" + extraParams;
+    document.cookie = c_name + '=' + c_value;
+}
+
+function getNDcookie(c_name) {
+    var c_value = document.cookie;
+    var c_start = c_value.indexOf(" " + c_name + "=");
+    if (c_start == -1) {
+        c_start = c_value.indexOf(c_name + "=");
+    }
+    if (c_start == -1) {
+        c_value = null;
+    } else {
+        c_start = c_value.indexOf("=", c_start) + 1;
+        var c_end = c_value.indexOf(";", c_start);
+        if (c_end == -1) {
+            c_end = c_value.length;
+        }
+        c_value = unescape(c_value.substring(c_start, c_end));
+    }
+    return c_value;
+}
+function deleteNDcookie(c_name) {
+    setNDcookie(c_name, "", -1);
+}
+
+/* VLB cookie get, set, and delete */
+function setVLBCookie(year, make, model, option, size) {
+    var vehicleInfo = year + ' ' +
+                          make + ' | ' +
+                          model + ' | ' +
+                          option;
+
+    if (!(size === undefined)) {
+        vehicleInfo += ' | ' + size;
+    }
+
+    setNDcookie('vehicle', vehicleInfo);
+}
+
+/* "get" */
+function populateVehicleInfo() {
+    vehicle = getNDcookie("vehicle");
+    if (vehicle !== null) {
+        vehicleInfo = new Array();
+
+        if (!(vehicle.split(' | ')[1] === undefined)) {
+            vehicleInfo[0] = vehicle.substring(0, 4);
+            vehicleInfo[1] = vehicle.substring(5, vehicle.indexOf(' | '));
+            vehicleInfo[2] = vehicle.split(' | ')[1];
+            vehicleInfo[3] = vehicle.split(' | ')[2];
+            if (!(vehicle.split(' | ')[3] === undefined)) {
+                vehicleInfo[4] = vehicle.split(' | ')[3];
+            } else {
+                vehicleInfo[4] = '';
+            }
+        } else {
+            vehicleInfo[0] = vehicle.substring(0, 4);
+            vehicleInfo[1] = vehicle.substring(5, vehicle.indexOf('-') - 1);
+            vehicleInfo[2] = vehicle.substring(vehicle.indexOf('-') + 2, vehicle.indexOf('(') - 1);
+            vehicleInfo[3] = vehicle.substring(vehicle.indexOf('(') + 1, vehicle.length - 1);
+            vehicleInfo[4] = '';
+        }
+    }
+}
+
+function expireVehicleCookie() {
+    deleteNDcookie("vehicle");
+}
+
+function isDescendant(parent, child) {
+    var node = child.parentNode;
+    while (node != null) {
+        if (node == parent) {
+            return true;
+        }
+        node = node.parentNode;
+    }
+    return false;
+}
+
+function isDescendantOfClass(className, child) {
+    return $(child).parents('.' + className).length > 0;
+}
+
+
+/*
+ * This function allows the forEach() & indexOf() method to work on arrays in older browsers
+*/
+if (!Array.prototype.forEach) {
+    Array.prototype.forEach = function (fn, scope) {
+        for (var i = 0, len = this.length; i < len; ++i) {
+            fn.call(scope || this, this[i], i, this);
+        }
+    }
+}
+
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement /*, fromIndex */) {
+        'use strict';
+        if (this == null) {
+            throw new TypeError();
+        }
+        var n, k, t = Object(this),
+            len = t.length >>> 0;
+
+        if (len === 0) {
+            return -1;
+        }
+        n = 0;
+        if (arguments.length > 1) {
+            n = Number(arguments[1]);
+            if (n != n) { // shortcut for verifying if it's NaN
+                n = 0;
+            } else if (n != 0 && n != Infinity && n != -Infinity) {
+                n = (n > 0 || -1) * Math.floor(Math.abs(n));
+            }
+        }
+        if (n >= len) {
+            return -1;
+        }
+        for (k = n >= 0 ? n : Math.max(len - Math.abs(n), 0) ; k < len; k++) {
+            if (k in t && t[k] === searchElement) {
+                return k;
+            }
+        }
+        return -1;
+    };
+}
+// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
+if (!Object.keys) {
+    Object.keys = (function () {
+        'use strict';
+        var hasOwnProperty = Object.prototype.hasOwnProperty,
+        hasDontEnumBug = !({ toString: null }).propertyIsEnumerable('toString'),
+        dontEnums = [
+          'toString',
+          'toLocaleString',
+          'valueOf',
+          'hasOwnProperty',
+          'isPrototypeOf',
+          'propertyIsEnumerable',
+          'constructor'
+        ],
+        dontEnumsLength = dontEnums.length;
+
+        return function (obj) {
+            if (typeof obj !== 'object' && (typeof obj !== 'function' || obj === null)) {
+                throw new TypeError('Object.keys called on non-object');
+            }
+
+            var result = [], prop, i;
+
+            for (prop in obj) {
+                if (hasOwnProperty.call(obj, prop)) {
+                    result.push(prop);
+                }
+            }
+
+            if (hasDontEnumBug) {
+                for (i = 0; i < dontEnumsLength; i++) {
+                    if (hasOwnProperty.call(obj, dontEnums[i])) {
+                        result.push(dontEnums[i]);
+                    }
+                }
+            }
+            return result;
+        };
+    }());
+}
+
+/*
+ * Fix to make JS fire after using the browser back button (Firefox)
+*/
+window.onunload = function () { };
+
+/*
+ * Fix to make console.log not blow up in IE8/9
+*/
+if (!(window.console) || !(typeof window.console.log === 'function' || typeof window.console.log === 'object')) {
+
+    var console = {
+        messages: [],
+        raw: []
+    }
+    var trap = function () { return true; }
+    var IEConsoleLogFix = function () {
+        console.messages.push(arguments[0]);
+    }
+
+    console = {
+        messages: [],
+        dump: function () { return console.messages.join('\n'); },
+        log: IEConsoleLogFix,
+        debug: trap,
+        info: trap,
+        warn: trap,
+        error: trap,
+        assert: trap,
+        clear: function () {
+            console.messages.length = 0;
+            console.raw.length = 0;
+        },
+        dir: trap,
+        dirxml: trap,
+        trace: trap,
+        group: trap,
+        groupCollapsed: trap,
+        groupEnd: trap,
+        time: trap,
+        timeEnd: trap,
+        timeStamp: trap,
+        profile: trap,
+        profileEnd: trap,
+        count: trap,
+        exception: trap,
+        table: trap
+    };
+}
+
+
+/*
+* Placeholder text fix for older browsers & JS MediaQuery Support
+*/
+/*! modernizr 3.2.0 (Custom Build) | MIT *
+ * http://modernizr.com/download/?-input-inputtypes-mediaqueries-placeholder-mq-setclasses-shiv !*/
+!function (e, t, n) { function a(e, t) { return typeof e === t } function r() { var e, t, n, r, o, i, l; for (var s in d) if (d.hasOwnProperty(s)) { if (e = [], t = d[s], t.name && (e.push(t.name.toLowerCase()), t.options && t.options.aliases && t.options.aliases.length)) for (n = 0; n < t.options.aliases.length; n++) e.push(t.options.aliases[n].toLowerCase()); for (r = a(t.fn, "function") ? t.fn() : t.fn, o = 0; o < e.length; o++) i = e[o], l = i.split("."), 1 === l.length ? Modernizr[l[0]] = r : (!Modernizr[l[0]] || Modernizr[l[0]] instanceof Boolean || (Modernizr[l[0]] = new Boolean(Modernizr[l[0]])), Modernizr[l[0]][l[1]] = r), c.push((r ? "" : "no-") + l.join("-")) } } function o(e) { var t = f.className, n = Modernizr._config.classPrefix || ""; if (m && (t = t.baseVal), Modernizr._config.enableJSClass) { var a = new RegExp("(^|\\s)" + n + "no-js(\\s|$)"); t = t.replace(a, "$1" + n + "js$2") } Modernizr._config.enableClasses && (t += " " + n + e.join(" " + n), m ? f.className.baseVal = t : f.className = t) } function i() { return "function" != typeof t.createElement ? t.createElement(arguments[0]) : m ? t.createElementNS.call(t, "http://www.w3.org/2000/svg", arguments[0]) : t.createElement.apply(t, arguments) } function l() { var e = t.body; return e || (e = i(m ? "svg" : "body"), e.fake = !0), e } function s(e, n, a, r) { var o, s, c, d, u = "modernizr", m = i("div"), p = l(); if (parseInt(a, 10)) for (; a--;) c = i("div"), c.id = r ? r[a] : u + (a + 1), m.appendChild(c); return o = i("style"), o.type = "text/css", o.id = "s" + u, (p.fake ? p : m).appendChild(o), p.appendChild(m), o.styleSheet ? o.styleSheet.cssText = e : o.appendChild(t.createTextNode(e)), m.id = u, p.fake && (p.style.background = "", p.style.overflow = "hidden", d = f.style.overflow, f.style.overflow = "hidden", f.appendChild(p)), s = n(m, e), p.fake ? (p.parentNode.removeChild(p), f.style.overflow = d, f.offsetHeight) : m.parentNode.removeChild(m), !!s } var c = [], d = [], u = { _version: "3.2.0", _config: { classPrefix: "", enableClasses: !0, enableJSClass: !0, usePrefixes: !0 }, _q: [], on: function (e, t) { var n = this; setTimeout(function () { t(n[e]) }, 0) }, addTest: function (e, t, n) { d.push({ name: e, fn: t, options: n }) }, addAsyncTest: function (e) { d.push({ name: null, fn: e }) } }, Modernizr = function () { }; Modernizr.prototype = u, Modernizr = new Modernizr; var f = t.documentElement, m = "svg" === f.nodeName.toLowerCase(); m || !function (e, t) { function n(e, t) { var n = e.createElement("p"), a = e.getElementsByTagName("head")[0] || e.documentElement; return n.innerHTML = "x<style>" + t + "</style>", a.insertBefore(n.lastChild, a.firstChild) } function a() { var e = b.elements; return "string" == typeof e ? e.split(" ") : e } function r(e, t) { var n = b.elements; "string" != typeof n && (n = n.join(" ")), "string" != typeof e && (e = e.join(" ")), b.elements = n + " " + e, c(t) } function o(e) { var t = y[e[g]]; return t || (t = {}, v++, e[g] = v, y[v] = t), t } function i(e, n, a) { if (n || (n = t), u) return n.createElement(e); a || (a = o(n)); var r; return r = a.cache[e] ? a.cache[e].cloneNode() : h.test(e) ? (a.cache[e] = a.createElem(e)).cloneNode() : a.createElem(e), !r.canHaveChildren || p.test(e) || r.tagUrn ? r : a.frag.appendChild(r) } function l(e, n) { if (e || (e = t), u) return e.createDocumentFragment(); n = n || o(e); for (var r = n.frag.cloneNode(), i = 0, l = a(), s = l.length; s > i; i++) r.createElement(l[i]); return r } function s(e, t) { t.cache || (t.cache = {}, t.createElem = e.createElement, t.createFrag = e.createDocumentFragment, t.frag = t.createFrag()), e.createElement = function (n) { return b.shivMethods ? i(n, e, t) : t.createElem(n) }, e.createDocumentFragment = Function("h,f", "return function(){var n=f.cloneNode(),c=n.createElement;h.shivMethods&&(" + a().join().replace(/[\w\-:]+/g, function (e) { return t.createElem(e), t.frag.createElement(e), 'c("' + e + '")' }) + ");return n}")(b, t.frag) } function c(e) { e || (e = t); var a = o(e); return !b.shivCSS || d || a.hasCSS || (a.hasCSS = !!n(e, "article,aside,dialog,figcaption,figure,footer,header,hgroup,main,nav,section{display:block}mark{background:#FF0;color:#000}template{display:none}")), u || s(e, a), e } var d, u, f = "3.7.3", m = e.html5 || {}, p = /^<|^(?:button|map|select|textarea|object|iframe|option|optgroup)$/i, h = /^(?:a|b|code|div|fieldset|h1|h2|h3|h4|h5|h6|i|label|li|ol|p|q|span|strong|style|table|tbody|td|th|tr|ul)$/i, g = "_html5shiv", v = 0, y = {}; !function () { try { var e = t.createElement("a"); e.innerHTML = "<xyz></xyz>", d = "hidden" in e, u = 1 == e.childNodes.length || function () { t.createElement("a"); var e = t.createDocumentFragment(); return "undefined" == typeof e.cloneNode || "undefined" == typeof e.createDocumentFragment || "undefined" == typeof e.createElement }() } catch (n) { d = !0, u = !0 } }(); var b = { elements: m.elements || "abbr article aside audio bdi canvas data datalist details dialog figcaption figure footer header hgroup main mark meter nav output picture progress section summary template time video", version: f, shivCSS: m.shivCSS !== !1, supportsUnknownElements: u, shivMethods: m.shivMethods !== !1, type: "default", shivDocument: c, createElement: i, createDocumentFragment: l, addElements: r }; e.html5 = b, c(t), "object" == typeof module && module.exports && (module.exports = b) }("undefined" != typeof e ? e : this, t), Modernizr.addTest("placeholder", "placeholder" in i("input") && "placeholder" in i("textarea")); var p = i("input"), h = "autocomplete autofocus list placeholder max min multiple pattern required step".split(" "), g = {}; Modernizr.input = function (t) { for (var n = 0, a = t.length; a > n; n++) g[t[n]] = !!(t[n] in p); return g.list && (g.list = !(!i("datalist") || !e.HTMLDataListElement)), g }(h); var v = "search tel url email datetime date month week time datetime-local number range color".split(" "), y = {}; Modernizr.inputtypes = function (e) { for (var a, r, o, i = e.length, l = "1)", s = 0; i > s; s++) p.setAttribute("type", a = e[s]), o = "text" !== p.type && "style" in p, o && (p.value = l, p.style.cssText = "position:absolute;visibility:hidden;", /^range$/.test(a) && p.style.WebkitAppearance !== n ? (f.appendChild(p), r = t.defaultView, o = r.getComputedStyle && "textfield" !== r.getComputedStyle(p, null).WebkitAppearance && 0 !== p.offsetHeight, f.removeChild(p)) : /^(search|tel)$/.test(a) || (o = /^(url|email)$/.test(a) ? p.checkValidity && p.checkValidity() === !1 : p.value != l)), y[e[s]] = !!o; return y }(v); var b = function () { var t = e.matchMedia || e.msMatchMedia; return t ? function (e) { var n = t(e); return n && n.matches || !1 } : function (t) { var n = !1; return s("@media " + t + " { #modernizr { position: absolute; } }", function (t) { n = "absolute" == (e.getComputedStyle ? e.getComputedStyle(t, null) : t.currentStyle).position }), n } }(); u.mq = b, Modernizr.addTest("mediaqueries", b("only all")), r(), o(c), delete u.addTest, delete u.addAsyncTest; for (var C = 0; C < Modernizr._q.length; C++) Modernizr._q[C](); e.Modernizr = Modernizr }(window, document);
+
+$(document).ready(function () {
+    if (!Modernizr.input.placeholder) {
+        $('input[placeholder], textarea[placeholder]').each(function () {
+            var thisInput = $(this);
+            if (thisInput.val() == '') {
+                thisInput
+                .val(thisInput.attr('placeholder'))
+                .focus(function () {
+                    if (thisInput.val() == thisInput.attr('placeholder')) {
+                        thisInput.val('');
+                    }
+                })
+                .blur(function () {
+                    if (thisInput.val() == '') {
+                        thisInput.val(thisInput.attr('placeholder'));
+                    }
+                });
+            }
+        });
+    }
+});
+
+$(document).ready(function () {
+    $(".fsLink").click(function () {
+        if (window.innerWidth >= 1024) {
+            var maxH = 618
+            var maxW = 829
+            var winW = $(window).width() - 100;
+            var winH = $(window).height() - 100;
+            $("#thedialog").attr('src', $(this).attr("href"));
+            $("#appointmentBox").dialog({
+                modal: true,
+                closeText: " ",
+                resizable: true,
+                dialogClass: 'fixed-dialog',
+                create: function (event, ui) {
+                    $(".ui-dialog").css({ "inset": "0", "maxHeight": maxH, "maxWidth": maxW, "height": "100%", "width": "100%", "position": "fixed", "left": "0", "right": "0", "top": "0", "bottom": "0", "margin": "auto", "z-index": "10000" });
+                    $(".ui-dialog-titlebar-close.ui-corner-all").css("float", "right");
+                    $("#ui-id-1").css("float", "left");
+                    $(".ui-dialog-titlebar").css({ "width": "100%", "display": "block", "padding": "20px 10px", "text-align": "center", "box-sizing": "border-box", "position": "relative" });
+                    $(".ui-dialog-title").css({ "color": "#FFF", "font-size": "26px", "font-family": "'Lato', sans-serif", "text-transform": "uppercase", "float": "none" });
+                    $(".ui-dialog-titlebar-close").css({ "color": "#FFF", "text-decoration": "none", "cursor": "pointer", "float": "none", "right": "20px", "top": "calc(50% - 12px)" });
+                    $(".ui-icon-closethick").css({ "height": "100%", "float": "right", "padding": "0px 10px 0px 0px", "font-size": "25px" });
+                    $(".ui-dialog-titlebar").addClass("ndcustomcolorclass");                    
+                },
+                open: function (event, ui) {
+                    $(event.target).parent().css({ 'position': 'fixed', 'top': '0', 'width': '100%', 'height': '100%'});
+                    $(event.target).css({ "height": "calc(100% - 66px)", "width": "100%" })
+                    $('.ui-widget-overlay').bind('click', function () { $("#appointmentBox").dialog('close'); });
+                },
+                close: function () {
+                    $("#thedialog").attr('src', "about:blank");
+                }
+            }); return false; 
+            
+        }
+        
+    });
+});

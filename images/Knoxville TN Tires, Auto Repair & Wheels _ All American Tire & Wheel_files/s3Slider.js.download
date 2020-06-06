@@ -1,0 +1,155 @@
+/* ------------------------------------------------------------------------
+	s3Slider
+	
+	Developped By: Boban KariÃ…Â¡ik -> //www.serie3.info/
+        CSS Help: MÃƒÂ©szÃƒÂ¡ros RÃƒÂ³bert -> //www.perspectived.com/
+	Version: 1.0
+	
+	Copyright: Feel free to redistribute the script/modify it, as
+			   long as you leave my infos at the top.
+------------------------------------------------------------------------- */
+
+
+(function ($) {
+
+    $.fn.s3Slider = function (vars) {
+
+        var element = this;
+        var timeOut = (vars.timeOut != undefined) ? vars.timeOut : 4000;
+        var current = null;
+        var timeOutFn = null;
+        var faderStat = true;
+        var mOver = false;
+        var overrideMouseOver = false;
+        var items = $("." + element[0].id + "Content ." + element[0].id + "Image");
+        var itemsSpan = $("." + element[0].id + "Content ." + element[0].id + "Image span");
+
+        items.each(function (i) {
+
+            $(items[i]).mouseover(function () {
+                mOver = true;
+            });
+
+            $(items[i]).mouseout(function () {
+                mOver = false;
+                fadeElement(true);
+            });
+
+        });
+
+
+        $("." + element[0].id + "prevClick").each(function (i, value) {
+            $(value).click(function () {
+                prevItem();
+                return false;
+            });
+        });
+        $("." + element[0].id + "nextClick").each(function (i, value) {
+            $(value).click(function () {
+                nextItem();
+                return false;
+            });
+        });
+
+
+
+        function nextItem() {
+            var currNo = getCurrNo();
+            var nextItemInd = (currNo + 1);
+            if (nextItemInd == itemsSpan.length)
+                nextItemInd = 0;
+
+            overrideMouseOver = true;
+            current = items[nextItemInd];
+            $(items[currNo]).hide();
+            $(items[nextItemInd]).show();
+        }
+
+        function prevItem() {
+            var currNo = getCurrNo();
+            var prevItemInd = (currNo - 1);
+            if (prevItemInd < 0)
+                prevItemInd = itemsSpan.length - 1
+
+            overrideMouseOver = true;
+            current = items[prevItemInd];
+            $(items[currNo]).hide();
+            $(items[prevItemInd]).show();
+        }
+
+        function getCurrNo() {
+            current = (current != null) ? current : items[(items.length - 1)];
+            var currNo = jQuery.inArray(current, items) + 1
+            currNo = (currNo == items.length) ? 0 : (currNo - 1);
+            return currNo;
+        }
+
+        var fadeElement = function (isMouseOut) {
+            var thisTimeOut = (isMouseOut) ? (timeOut / 2) : timeOut;
+            thisTimeOut = (faderStat) ? 10 : thisTimeOut;
+            if (items.length > 0) {
+                timeOutFn = setTimeout(makeSlider, thisTimeOut);
+            } else {
+                console.log("Poof..");
+            }
+        }
+
+        function doRecursiveCall() {
+            if (!mOver) {
+                fadeElement(false);
+            }
+        }
+
+        var makeSlider = function () {
+            var currNo = getCurrNo();
+            var newMargin = $(element).width() * currNo;
+            if (faderStat == true) {
+                if (!mOver) {
+                    $(items[currNo]).fadeIn((timeOut / 6), function () {
+                        if ($(itemsSpan[currNo]).css('bottom') == 0) {
+                            $(itemsSpan[currNo]).slideUp((timeOut / 6), function () {
+                                faderStat = false;
+                                current = items[currNo];
+                                doRecursiveCall();
+                            });
+                        } else {
+                            $(itemsSpan[currNo]).slideDown((timeOut / 6), function () {
+                                faderStat = false;
+                                current = items[currNo];
+                                doRecursiveCall();
+                            });
+                        }
+                    });
+                }
+            } else {
+                if (!mOver) {
+                    if ($(itemsSpan[currNo]).css('bottom') == 0) {
+                        $(itemsSpan[currNo]).slideDown((timeOut / 6), function () {
+                            if (!overrideMouseOver) {
+                                $(items[currNo]).fadeOut((timeOut / 6), function () {
+                                    faderStat = true;
+                                    current = items[(currNo + 1)];
+                                    doRecursiveCall();
+                                });
+                            }
+                        });
+                    } else {
+                        $(itemsSpan[currNo]).slideUp((timeOut / 6), function () {
+                            if (!overrideMouseOver) {
+                                $(items[currNo]).fadeOut((timeOut / 6), function () {
+                                    faderStat = true;
+                                    current = items[(currNo + 1)];
+                                    doRecursiveCall();
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        makeSlider();
+
+    };
+
+})(jQuery);
